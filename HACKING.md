@@ -2,14 +2,25 @@
 
 `./configure.py` generates the `build.ninja` files used to build
 ninja.  It accepts various flags to adjust build parameters.
+Run './configure.py --help' for more configuration options.
 
 The primary build target of interest is `ninja`, but when hacking on
-Ninja your changes should be testable so it's more useful to build
-and run `ninja_test` when developing.
+Ninja your changes should be testable so it's more useful to build and
+run `ninja_test` when developing.
 
-(`./bootstrap.py` creates a bootstrap `ninja` and runs the above
-process; it's only necessary to run if you don't have a copy of
-`ninja` to build with.)
+### Bootstrapping
+
+Ninja is built using itself.  To bootstrap the first binary, run the
+configure script as `./configure.py --bootstrap`.  This first compiles
+all non-test source files together, then re-builds Ninja using itself.
+You should end up with a `ninja` binary (or `ninja.exe`) in the source root.
+
+#### Windows
+
+On Windows, you'll need to install Python to run `configure.py`, and
+run everything under a Visual Studio Tools Command Prompt (or after
+running `vcvarsall` in a normal command prompt).  See below if you
+want to use mingw or some other compiler instead using Visual Studio.
 
 ### Adjusting build flags
 
@@ -49,26 +60,6 @@ discuss new feature ideas on the mailing list before I shoot down your
 patch.
 
 ## Testing
-
-### Installing gtest
-
-The `ninja_test` binary, containing all the tests, depends on the
-googletest (gtest) library.
-
-* On older Ubuntus it'll install as libraries into `/usr/lib`:
-
-        apt-get install libgtest
-
-* On newer Ubuntus it's only distributed as source
-
-        apt-get install libgtest-dev
-        ./configure.py --with-gtest=/usr/src/gtest
-
-* Otherwise you need to download it, unpack it, and pass
-  `--with-gtest` to `configure.py`.  Get it from [its downloads
-  page](http://code.google.com/p/googletest/downloads/list); [this
-  direct download link might work
-  too](http://googletest.googlecode.com/files/gtest-1.6.0.zip).
 
 ### Test-driven development
 
@@ -146,14 +137,15 @@ it's locked while in use.
 
 * Install Visual Studio (Express is fine), [Python for Windows][],
   and (if making changes) googletest (see above instructions)
-* In a Visual Studio command prompt: `python bootstrap.py`
+* In a Visual Studio command prompt: `python configure.py --bootstrap`
 
 [Python for Windows]: http://www.python.org/getit/windows/
 
 ### Via mingw on Windows (not well supported)
 
 * Install mingw, msys, and python
-* In the mingw shell, put Python in your path, and `python bootstrap.py`
+* In the mingw shell, put Python in your path, and
+  `python configure.py --bootstrap`
 * To reconfigure, run `python configure.py`
 * Remember to strip the resulting executable if size matters to you
 
@@ -184,3 +176,49 @@ The trick is to install just the compilers, and not all of Visual Studio,
 by following [these instructions][win7sdk].
 
 [win7sdk]: http://www.kegel.com/wine/cl-howto-win7sdk.html
+
+### Using gcov
+
+Do a clean debug build with the right flags:
+
+    CFLAGS=-coverage LDFLAGS=-coverage ./configure.py --debug
+    ninja -t clean ninja_test && ninja ninja_test
+
+Run the test binary to generate `.gcda` and `.gcno` files in the build
+directory, then run gcov on the .o files to generate `.gcov` files in the
+root directory:
+
+    ./ninja_test
+    gcov build/*.o
+
+Look at the generated `.gcov` files directly, or use your favorite gcov viewer.
+
+### Using afl-fuzz
+
+Build with afl-clang++:
+
+    CXX=path/to/afl-1.20b/afl-clang++ ./configure.py
+    ninja
+
+Then run afl-fuzz like so:
+
+    afl-fuzz -i misc/afl-fuzz -o /tmp/afl-fuzz-out ./ninja -n -f @@
+
+You can pass `-x misc/afl-fuzz-tokens` to use the token dictionary. In my
+testing, that did not seem more effective though.
+
+#### Using afl-fuzz with asan
+
+If you want to use asan (the `isysroot` bit is only needed on OS X; if clang
+can't find C++ standard headers make sure your LLVM checkout includes a libc++
+checkout and has libc++ installed in the build directory):
+
+    CFLAGS="-fsanitize=address -isysroot $(xcrun -show-sdk-path)" \
+        LDFLAGS=-fsanitize=address CXX=path/to/afl-1.20b/afl-clang++ \
+        ./configure.py
+    AFL_CXX=path/to/clang++ ninja
+
+Make sure ninja can find the asan runtime:
+
+    DYLD_LIBRARY_PATH=path/to//lib/clang/3.7.0/lib/darwin/ \
+        afl-fuzz -i misc/afl-fuzz -o /tmp/afl-fuzz-out ./ninja -n -f @@

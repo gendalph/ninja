@@ -29,7 +29,7 @@ struct IncludesNormalize {
   static string Relativize(StringPiece path, const string& start);
 
   /// Normalize by fixing slashes style, fixing redundant .. and . and makes the
-  /// path relative to |relative_to|. Case is normalized to lowercase on
-  /// Windows too.
-  static string Normalize(const string& input, const char* relative_to);
+  /// path relative to |relative_to|.
+  static bool Normalize(const string& input, const char* relative_to,
+                        string* result, string* err);
 };
