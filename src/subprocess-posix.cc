@@ -107,6 +107,8 @@ bool Subprocess::Start(SubprocessSet* set, const string& command) {
         break;
       if (sigaction(SIGTERM, &set->old_term_act_, 0) < 0)
         break;
+      if (sigaction(SIGHUP, &set->old_hup_act_, 0) < 0)
+        break;
       if (sigprocmask(SIG_SETMASK, &set->old_mask_, 0) < 0)
         break;
 
@@ -192,7 +194,8 @@ ExitStatus Subprocess::Finish() {
     if (exit == 0)
       return ExitSuccess;
   } else if (WIFSIGNALED(status)) {
-    if (WTERMSIG(status) == SIGINT || WTERMSIG(status) == SIGTERM)
+    if (WTERMSIG(status) == SIGINT || WTERMSIG(status) == SIGTERM
+        || WTERMSIG(status) == SIGHUP)
       return ExitInterrupted;
   }
   return ExitFailure;
@@ -223,6 +226,8 @@ void SubprocessSet::HandlePendingInterruption() {
     interrupted_ = SIGINT;
   else if (sigismember(&pending, SIGTERM))
     interrupted_ = SIGTERM;
+  else if (sigismember(&pending, SIGHUP))
+    interrupted_ = SIGHUP;
 }
 
 SubprocessSet::SubprocessSet() {
@@ -230,6 +235,7 @@ SubprocessSet::SubprocessSet() {
   sigemptyset(&set);
   sigaddset(&set, SIGINT);
   sigaddset(&set, SIGTERM);
+  sigaddset(&set, SIGHUP);
   if (sigprocmask(SIG_BLOCK, &set, &old_mask_) < 0)
     Fatal("sigprocmask: %s", strerror(errno));
 
@@ -240,6 +246,8 @@ SubprocessSet::SubprocessSet() {
     Fatal("sigaction: %s", strerror(errno));
   if (sigaction(SIGTERM, &act, &old_term_act_) < 0)
     Fatal("sigaction: %s", strerror(errno));
+  if (sigaction(SIGHUP, &act, &old_hup_act_) < 0)
+    Fatal("sigaction: %s", strerror(errno));
 }
 
 SubprocessSet::~SubprocessSet() {
@@ -248,6 +256,8 @@ SubprocessSet::~SubprocessSet() {
   if (sigaction(SIGINT, &old_int_act_, 0) < 0)
     Fatal("sigaction: %s", strerror(errno));
   if (sigaction(SIGTERM, &old_term_act_, 0) < 0)
+    Fatal("sigaction: %s", strerror(errno));
+  if (sigaction(SIGHUP, &old_hup_act_, 0) < 0)
     Fatal("sigaction: %s", strerror(errno));
   if (sigprocmask(SIG_SETMASK, &old_mask_, 0) < 0)
     Fatal("sigprocmask: %s", strerror(errno));
