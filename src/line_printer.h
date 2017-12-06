@@ -36,7 +36,7 @@ struct LinePrinter {
   void Print(string to_print, LineType type);
 
   /// Prints a string on a new line, not overprinting previous output.
-  void PrintOnNewLine(const string& to_print);
+  void PrintOnNewLine(const string& to_print, bool is_error = false);
 
   /// Lock or unlock the console.  Any output sent to the LinePrinter while the
   /// console is locked will not be printed until it is unlocked.

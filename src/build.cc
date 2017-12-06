@@ -138,8 +138,8 @@ void BuildStatus::BuildEdgeFinished(Edge* edge,
          o != edge->outputs_.end(); ++o)
       outputs += (*o)->path() + " ";
 
-    printer_.PrintOnNewLine("FAILED: " + outputs + "\n");
-    printer_.PrintOnNewLine(edge->EvaluateCommand() + "\n");
+    printer_.PrintOnNewLine("FAILED: " + outputs + "\n", true);
+    printer_.PrintOnNewLine(edge->EvaluateCommand() + "\n", true);
   }
 
   if (!output.empty()) {
@@ -166,7 +166,7 @@ void BuildStatus::BuildEdgeFinished(Edge* edge,
     _setmode(_fileno(stdout), _O_BINARY);  // Begin Windows extra CR fix
 #endif
 
-    printer_.PrintOnNewLine(final_output);
+    printer_.PrintOnNewLine(final_output, !success);
 
 #ifdef _WIN32
     _setmode(_fileno(stdout), _O_TEXT);  // End Windows extra CR fix

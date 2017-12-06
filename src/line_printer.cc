@@ -106,17 +106,23 @@ void LinePrinter::PrintOrBuffer(const char* data, size_t size) {
   }
 }
 
-void LinePrinter::PrintOnNewLine(const string& to_print) {
+void LinePrinter::PrintOnNewLine(const string& to_print, bool is_error) {
   if (console_locked_ && !line_buffer_.empty()) {
     output_buffer_.append(line_buffer_);
     output_buffer_.append(1, '\n');
     line_buffer_.clear();
   }
   if (!have_blank_line_) {
-    PrintOrBuffer("\n", 1);
+    if (is_error)
+      fprintf (stderr, "\n");
+    else
+      PrintOrBuffer("\n", 1);
   }
   if (!to_print.empty()) {
-    PrintOrBuffer(&to_print[0], to_print.size());
+    if (is_error)
+      fprintf (stderr, "%s", to_print.c_str ());
+    else
+      PrintOrBuffer(&to_print[0], to_print.size());
   }
   have_blank_line_ = to_print.empty() || *to_print.rbegin() == '\n';
 }
